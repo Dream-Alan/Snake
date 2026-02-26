@@ -3,6 +3,7 @@ package MySnake;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.io.ByteArrayOutputStream;
 import java.util.LinkedList;
 
 public class GamePanel extends JPanel implements ActionListener {
@@ -28,20 +29,37 @@ public class GamePanel extends JPanel implements ActionListener {
 
     int[][] map = new int[ROWS][COLS];
     LinkedList<Point> snake;
-
-    // --- 游戏状态控制 (新增) ---
+    int Score = 0;
+    int Speed=200;
+    long startTime;
     int direction = RIGHT; // 初始方向向右
     boolean running = false;
     Timer timer;
-
+    JFrame frame;
     public GamePanel() {
+        frame=new JFrame("Snake");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         this.setPreferredSize(new Dimension(SCREEN_WIDTH, SCREEN_HEIGHT));
         this.setBackground(Color.BLACK);
         this.setFocusable(true);
         this.setVisible(true);
+        frame.setVisible(true);
+        frame.add(this);
+        frame.pack();
+        frame.setLocationRelativeTo(null);
+
+
+
         initMap();
         initSnake();
+
+        Control();
+
+
         startGame(); // <--- 启动游戏
+
+
+
     }
 
     private void initMap() {
@@ -68,16 +86,20 @@ public class GamePanel extends JPanel implements ActionListener {
         }
     }
 
-    // --- 新增：启动引擎 ---
+
     public void startGame() {
         running = true;
         // 200ms 触发一次 actionPerformed，即蛇的速度
-        timer = new Timer(200, this);
+        this.startTime=System.currentTimeMillis();
+        timer = new Timer(Speed, this);
         timer.start();
+
+
     }
 
-    // --- 新增：核心移动逻辑 ---
+
     public void move() {
+
         if (!running) return;
 
         // 1. 获取当前蛇头
@@ -96,30 +118,119 @@ public class GamePanel extends JPanel implements ActionListener {
         if (map[newHead.y][newHead.x] == WALL) {
             running = false;
             timer.stop();
-            System.out.println("撞墙了！(暂时停止)");
+            System.out.println("撞墙了！");
+            countScore();
+
             return;
         }
-
+        if (map[newHead.y][newHead.x] == SNAKE) {
+            running = false;
+            timer.stop();
+            System.out.println("撞到自己了！");
+            countScore();
+            return;
+        }
         // 3. 移动逻辑：加头去尾
-        // 加头
-        snake.addFirst(newHead);
-        map[newHead.y][newHead.x] = SNAKE;
-
-        // 去尾 (暂时还没写吃食物逻辑，所以每次移动必然去尾)
-        Point tail = snake.removeLast();
         // 只有当尾巴不是新头所在位置时才清空（避免头尾重合时的闪烁bug）
-        if (map[tail.y][tail.x] == SNAKE) {
+        if (map[newHead.y][newHead.x] == FOOD) {
+            // 吃到食物，不移除蛇尾，蛇变长
+            snake.addFirst(newHead);
+            map[newHead.y][newHead.x] = SNAKE;
+            generateFood();
+            Score += 10;
+
+            if (Speed > 100) {
+                Speed -= 10;
+                timer.setDelay(Speed);
+            }
+        } else {
+            snake.addFirst(newHead);
+            map[newHead.y][newHead.x] = SNAKE;
+            Point tail = snake.removeLast();// 没吃到食物，移除蛇尾
             map[tail.y][tail.x] = EMPTY;
         }
-
-        map[tail.y][tail.x] = EMPTY;
-
-        map[newHead.y][newHead.x] = SNAKE;
     }
+
+    public void Control() {
+        this.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                int key = e.getKeyCode();
+                switch (key) {
+                    case KeyEvent.VK_UP:
+                        if (direction != DOWN)
+                            direction = UP;
+
+                        break;
+                    case KeyEvent.VK_DOWN:
+                        if (direction != UP)
+                            direction = DOWN;
+
+                        break;
+                    case KeyEvent.VK_LEFT:
+                        if (direction != RIGHT)
+                            direction = LEFT;
+
+                        break;
+                    case KeyEvent.VK_RIGHT:
+                        if (direction != LEFT)
+                            direction = RIGHT;
+                        break;
+
+                }
+            }
+        });
+    }
+
+    public void countScore(){
+        Score=(snake.size()-3)*10;
+        new exitDialog(frame,Score,startTime);
+    }
+    public void generateFood() {
+        // 首先检查地图上是否已有食物
+        for (int r = 0; r < ROWS; r++) {
+            for (int c = 0; c < COLS; c++) {
+                if (map[r][c] == FOOD) {
+                    return; // 已有食物，不再生成新食物
+                }
+            }
+        }
+
+        int r, c;
+        boolean validPosition;
+
+        do {
+            validPosition = true;
+            // 生成随机位置，避免生成在边界上
+            r = (int) (Math.random() * (ROWS - 2)) + 1;
+            c = (int) (Math.random() * (COLS - 2)) + 1;
+
+            // 检查位置是否为空
+            if (map[r][c] != EMPTY) {
+                validPosition = false;
+            }
+        } while (!validPosition);
+
+        // 在空位置放置食物
+        map[r][c] = FOOD;
+    }
+
 
     @Override
     public void paintComponent(Graphics g) {
+        generateFood();
         super.paintComponent(g);
+        // 绘制网格线
+
+        g.setColor(Color.DARK_GRAY);
+        for (int r = 0; r <= ROWS; r++) {
+            // 绘制水平网格线
+            g.drawLine(0, r * TILE_SIZE, SCREEN_WIDTH, r * TILE_SIZE);
+        }
+        for (int c = 0; c <= COLS; c++) {
+            // 绘制垂直网格线
+            g.drawLine(c * TILE_SIZE, 0, c * TILE_SIZE, SCREEN_HEIGHT);
+        }
         for (int r = 0; r < ROWS; r++) {
             for (int c = 0; c < COLS; c++) {
                 int type = map[r][c];
@@ -130,7 +241,6 @@ public class GamePanel extends JPanel implements ActionListener {
                         g.setColor(Color.GRAY); // 设置 * 号的颜色
                         g.setFont(new Font("Monospaced", Font.BOLD, 20));
 
-                        // 为了让 * 号完美居中在格子里，我们需要测量一下字体的尺寸
                         FontMetrics metrics = g.getFontMetrics(g.getFont());
                         int textWidth = metrics.stringWidth("*");
 
@@ -159,8 +269,51 @@ public class GamePanel extends JPanel implements ActionListener {
     @Override
     public void actionPerformed(ActionEvent e) {
         if (running) {
-            move();    // 1. 算数据
-            repaint(); // 2. 画画面
+
+            move();// 1. 算数据
+            repaint();// 2. 画画面
+
         }
     }
+}
+class exitDialog extends JDialog {
+    private JFrame parentFrame;
+    Timer timer;
+    public exitDialog(JFrame parentFrame,int score, long time) {
+        new JDialog(parentFrame,"Game Over", true);
+        setVisible(true);
+        this.parentFrame= parentFrame;
+        setLayout(new BorderLayout());
+        setSize(300, 200);
+        setLocationRelativeTo(parentFrame);
+
+        Button b1 = new Button("Restart");
+        b1.setBounds(50, 100, 50, 50);
+        b1.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+            parentFrame.dispose();
+            new GamePanel();
+                dispose();
+
+            }
+        });
+        Button b2 = new Button("Exit");
+        b2.setBounds(100, 100, 50, 50);
+        b2.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                System.exit(0);
+            }
+        });
+        add(b1);
+        add(b2);
+        JLabel label = new JLabel("Final Score:" + score+"\t\t"+"Time:"+ (System.currentTimeMillis() - time) / 1000+"s");
+        label.setFont(new Font("Arial",Font.BOLD,20));
+        label.setSize(200, 50);
+        add(label,BorderLayout.CENTER);
+
+    }
+
+
 }
