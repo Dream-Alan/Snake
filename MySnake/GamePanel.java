@@ -269,10 +269,8 @@ public class GamePanel extends JPanel implements ActionListener {
     @Override
     public void actionPerformed(ActionEvent e) {
         if (running) {
-
             move();// 1. 算数据
             repaint();// 2. 画画面
-
         }
     }
 }
@@ -295,7 +293,6 @@ class exitDialog extends JDialog {
             parentFrame.dispose();
             new GamePanel();
                 dispose();
-
             }
         });
         Button b2 = new Button("Exit");
@@ -312,8 +309,5 @@ class exitDialog extends JDialog {
         label.setFont(new Font("Arial",Font.BOLD,20));
         label.setSize(200, 50);
         add(label,BorderLayout.CENTER);
-
     }
-
-
 }
