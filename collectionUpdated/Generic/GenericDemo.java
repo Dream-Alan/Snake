@@ -1,7 +1,5 @@
 package collectionUpdated.Generic;
 
-import sun.net.www.content.text.Generic;
-
 import java.util.ArrayList;
 import java.util.List;
 
