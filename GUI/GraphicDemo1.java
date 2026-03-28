@@ -5,6 +5,12 @@ import java.awt.event.*;
 public class GraphicDemo1 {
     public static void main(String[] args) {
         MyPaint mp=new MyPaint();
+        mp.addWindowListener(new WindowAdapter(){
+            @Override
+            public void windowClosing(WindowEvent e) {
+                System.exit(0);
+            }
+        });
         mp.loadFrame();
     }
 }
